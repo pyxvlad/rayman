@@ -1,16 +1,21 @@
-package main
+package pacman
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"gitlab.com/rayone121/rayman/aurweb"
-	"gitlab.com/rayone121/rayman/pacman"
 	"gitlab.com/rayone121/rayman/util"
 )
 
 type Operation interface {
-	Execute() ([]pacman.Package, error)
+	Execute() ([]Package, error)
+}
+
+type operationJsonHelper struct {
+	Type     string   `json:"type,omitempty"`
+	Packages []string `json:"packages,omitempty"`
 }
 
 type InstallOperation struct {
@@ -22,9 +27,9 @@ func NewInstallOperation(packages []string, withConfirmation bool) InstallOperat
 	return InstallOperation{packages: packages, withConfirmation: withConfirmation}
 }
 
-func (op *InstallOperation) Execute() ([]pacman.Package, error) {
+func (op InstallOperation) Execute() ([]Package, error) {
 
-	pac, err := pacman.New()
+	pac, err := New()
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +59,7 @@ func (op *InstallOperation) Execute() ([]pacman.Package, error) {
 	}
 
 	if len(viaPacman) > 0 {
-		err = pacman.Install(viaPacman, op.withConfirmation)
+		err = Install(viaPacman, op.withConfirmation)
 		if err != nil {
 			return nil, err
 		}
@@ -67,11 +72,18 @@ func (op *InstallOperation) Execute() ([]pacman.Package, error) {
 		}
 
 		for _, r := range results {
-			util.InstallAurPackage(r.Name)
+			err := util.InstallAurPackage(r.Name)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	return nil, nil
+}
+
+func (op InstallOperation) MarshalJSON() ([]byte, error) {
+	return json.Marshal(operationJsonHelper{Type: "install", Packages: op.packages})
 }
 
 type RemoveOperation struct {
@@ -83,8 +95,8 @@ func NewRemoveOperation(packages []string, withConfirmation bool) RemoveOperatio
 	return RemoveOperation{packages: packages, withConfirmation: withConfirmation}
 }
 
-func (op *RemoveOperation) Execute() ([]pacman.Package, error) {
-	packages, err := pacman.GetInstalledPackages()
+func (op RemoveOperation) Execute() ([]Package, error) {
+	packages, err := GetInstalledPackages()
 	if err != nil {
 		return nil, err
 	}
@@ -103,57 +115,42 @@ func (op *RemoveOperation) Execute() ([]pacman.Package, error) {
 
 	}
 
-	return nil, pacman.Remove(op.packages, op.withConfirmation)
+	return nil, Remove(op.packages, op.withConfirmation)
 }
 
-type SearchField int
+func (op RemoveOperation) MarshalJSON() ([]byte, error) {
+
+	return json.Marshal(operationJsonHelper{Type: "remove", Packages: op.packages})
+}
+
+type SearchField string
 
 const (
-	ByName SearchField = iota
-	ByNameDesc
-	ByMaintainer
-	ByDepends
-	ByMakeDepends
-	ByOptDepends
-	ByCheckDepends
+	ByName         SearchField = "name"
+	ByNameDesc                 = "name-desc"
+	ByMaintainer               = "maintainer"
+	ByDepends                  = "depends"
+	ByMakeDepends              = "makedepends"
+	ByOptDepends               = "optdepends"
+	ByCheckDepends             = "checkdepends"
 )
-
-func (f SearchField) String() string {
-	switch f {
-	case ByName:
-		return "name"
-	case ByNameDesc:
-		return "name-desc"
-	case ByMaintainer:
-		return "maintainer"
-	case ByDepends:
-		return "depends"
-	case ByMakeDepends:
-		return "makedepends"
-	case ByOptDepends:
-		return "optdepends"
-	case ByCheckDepends:
-		return "checkdepends"
-	}
-	return "unknown"
-}
 
 type SearchOperation struct {
 	keyword string
-	field   string
+	field   SearchField
 }
 
 func NewSearchOperation(keyword string, field SearchField) SearchOperation {
-	return SearchOperation{keyword: keyword, field: field.String()}
+	return SearchOperation{keyword: keyword, field: field}
 }
 
-func (op *SearchOperation) Execute() ([]pacman.Package, error) {
-	pac, err := pacman.New()
+func (op SearchOperation) Execute() ([]Package, error) {
+	pac, err := New()
 	if err != nil {
 		return nil, err
 	}
 
-	packages := make([]pacman.Package, 0)
+	packages := make([]Package, 0)
 
 	pacmanPackages, err := pac.GetAvailablePackages()
 	if err != nil {
@@ -166,14 +163,14 @@ func (op *SearchOperation) Execute() ([]pacman.Package, error) {
 		}
 	}
 
-	results, err := aurweb.Search(op.field, op.keyword)
+	results, err := aurweb.Search(string(op.field), op.keyword)
 
 	if err != nil {
 		return nil, err
 	}
 
 	for _, r := range results {
-		packages = append(packages, pacman.Package{Name: r.Name, Version: r.Version, Description: r.Description, Repository: "aur"})
+		packages = append(packages, Package{Name: r.Name, Version: r.Version, Description: r.Description, Repository: "aur"})
 	}
 
 	return packages, nil

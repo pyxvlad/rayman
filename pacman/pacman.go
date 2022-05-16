@@ -70,10 +70,10 @@ func (p *Pacman) GetRepositoryPackages(repo string) ([]Package, error) {
 }
 
 type Package struct {
-	Name        string
-	Version     string
-	Description string
-	Repository  string
+	Name        string `json:"name,omitempty"`
+	Version     string `json:"version,omitempty"`
+	Description string `json:"description,omitempty"`
+	Repository  string `json:"repository,omitempty"`
 }
 
 func GetInstalledPackages() ([]Package, error) {

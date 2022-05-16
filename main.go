@@ -16,16 +16,16 @@ func main() {
 	switch os.Args[1] {
 	case "install":
 		{
-			op := NewInstallOperation(os.Args[2:], true)
-			_,err := op.Execute()
+			op := pacman.NewInstallOperation(os.Args[2:], true)
+			_, err := op.Execute()
 			if err != nil {
 				panic(err)
 			}
-		
+
 		}
 	case "remove":
 		{
-			op := NewRemoveOperation(os.Args[2:], true)
+			op := pacman.NewRemoveOperation(os.Args[2:], true)
 			_, err := op.Execute()
 			if err != nil {
 				panic(err)
@@ -35,14 +35,14 @@ func main() {
 
 	case "search":
 		{
-			op := NewSearchOperation(pkg, ByName)
+			op := pacman.NewSearchOperation(pkg, pacman.ByName)
 			results, err := op.Execute()
 			if err != nil {
 				panic(err)
 			}
 
 			for _, pkg := range results {
-				fmt.Printf("\n%s/%s %s",pkg.Repository, pkg.Name, pkg.Version)
+				fmt.Printf("\n%s/%s %s", pkg.Repository, pkg.Name, pkg.Version)
 				installed, err := pacman.IsPackageInstalled(pkg.Name)
 				if err != nil {
 					panic(err)
