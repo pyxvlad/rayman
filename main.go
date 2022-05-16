@@ -40,6 +40,21 @@ func MakeCacheDir() (string, error) {
 
 	return cache, os.MkdirAll(cache, 0777)
 }
+func DirExists(path string) (bool, error) {
+	stat, err := os.Stat(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		} else {
+			return false, err
+		}
+	}
+	if stat.IsDir() {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
 
 func InstallAurPackage(pkg string) error {
 	cache, err := MakeCacheDir()
@@ -47,13 +62,12 @@ func InstallAurPackage(pkg string) error {
 		return err
 	}
 
-	stat, err := os.Stat(cache + "/" + pkg)
-	if !errors.Is(err, os.ErrNotExist) {
+	exists, err := DirExists(cache + "/" + pkg)
+	if err != nil {
 		return err
 	}
-	err = nil
 
-	if stat.IsDir() {
+	if exists {
 		cmd := exec.Command("git", "pull")
 		cmd.Dir = cache + "/" + pkg
 		if err != nil {
@@ -68,6 +82,11 @@ func InstallAurPackage(pkg string) error {
 			return err
 		}
 	} else {
+		err := os.RemoveAll(cache + "/" + pkg)
+		if err != nil {
+			return err
+		}
+
 		cmd := exec.Command("git", "clone", "https://aur.archlinux.org/"+pkg+".git")
 		cmd.Dir = cache
 		if err != nil {
