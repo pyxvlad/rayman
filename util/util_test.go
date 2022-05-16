@@ -1,11 +1,16 @@
 package util_test
 
 import (
+	"bytes"
+	"compress/gzip"
+	_ "embed"
 	"errors"
+	"io"
 	"os"
 	"reflect"
 	"testing"
 
+	"gitlab.com/rayone121/rayman/testingdata"
 	"gitlab.com/rayone121/rayman/util"
 )
 
@@ -150,7 +155,6 @@ func TestInstallAurPackage_CacheNotADirectory(t *testing.T) {
 	}
 }
 
-
 func TestInstallAurPackage_FailGitClone(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("XDG_CACHE_HOME", tmp)
@@ -167,16 +171,16 @@ func TestInstallAurPackage_FailCleanDir(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("XDG_CACHE_HOME", tmp)
 
-	os.MkdirAll(tmp + "/rayman", 0777)
+	os.MkdirAll(tmp+"/rayman", 0777)
 	f, err := os.Create(tmp + "/rayman/rayman")
 	if err != nil {
 		t.Fatal(err)
-	} 
+	}
 	if err := f.Chmod(0); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := util.InstallAurPackage("rayman", func(workDir, name string, arg ...string) error {return nil}); err != nil {
+	if err := util.InstallAurPackage("rayman", func(workDir, name string, arg ...string) error { return nil }); err != nil {
 		t.Fatalf("got %e", err)
 	}
 }
@@ -185,7 +189,7 @@ func TestInstallAurPackage_FailGitPull(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("XDG_CACHE_HOME", tmp)
 
-	if err := os.MkdirAll(tmp + "/rayman/rayman", 0777); err != nil {
+	if err := os.MkdirAll(tmp+"/rayman/rayman", 0777); err != nil {
 		t.Fatalf("internal error: %e", err)
 	}
 
@@ -205,4 +209,48 @@ func TestInstallAurPackage_Fresh(t *testing.T) {
 	fakes.Add(nil, tmp+"/rayman", "git", "clone", "https://aur.archlinux.org/rayman.git")
 	fakes.Add(nil, tmp+"/rayman/rayman", "makepkg", "--noconfirm", "-si")
 	util.InstallAurPackage("rayman", fakes.Console)
+}
+
+func TestAssertNoError(t *testing.T) {
+	util.AssertNoError(nil)
+
+	defer func() { recover() }()
+	util.AssertNoError(errors.New("test"))
+	t.Fatal("didn't panic")
+}
+
+type FakeReader struct{}
+
+func (f FakeReader) Read(p []byte) (n int, err error) {
+	p = []byte("hello")
+	n = len(p)
+	err = nil
+	return
+}
+
+func TestForEachFileInTarGz_NoHeader(t *testing.T) {
+	reader := FakeReader{}
+	util.ForEachFileInTarGz(reader, func(reader io.Reader) error { return nil })
+}
+
+func TestForEachFileInTarGz_NotTar(t *testing.T) {
+	var buff bytes.Buffer
+	gz := gzip.NewWriter(&buff)
+	gz.Write([]byte("just gzipped data"))
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	util.ForEachFileInTarGz(&buff, func(reader io.Reader) error { return nil })
+}
+
+func TestForEachFileInTarGz_ParserError(t *testing.T) {
+	var buff bytes.Buffer
+	buff.Write(testingdata.CoreDB)
+
+	expected := errors.New("parser error")
+	err := util.ForEachFileInTarGz(&buff, func(reader io.Reader) error { return expected })
+	if err != expected {
+		t.Fatalf("expected %#v got %#v", expected, err)
+	}
 }

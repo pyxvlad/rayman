@@ -29,7 +29,7 @@ func NewInstallOperation(packages []string, withConfirmation bool) InstallOperat
 
 func (op InstallOperation) Execute() ([]Package, error) {
 
-	pac, err := New()
+	pac, err := New("/var/lib/pacman/sync")
 	if err != nil {
 		return nil, err
 	}
@@ -66,12 +66,12 @@ func (op InstallOperation) Execute() ([]Package, error) {
 	}
 
 	if len(viaAUR) > 0 {
-		results, err := aurweb.Info(viaAUR)
+		info, err := aurweb.Info(viaAUR)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, r := range results {
+		for _, r := range info.Results {
 			err := util.InstallAurPackage(r.Name, util.ConsoleCommand)
 			if err != nil {
 				return nil, err
@@ -145,7 +145,7 @@ func NewSearchOperation(keyword string, field SearchField) SearchOperation {
 }
 
 func (op SearchOperation) Execute() ([]Package, error) {
-	pac, err := New()
+	pac, err := New("/var/lib/pacman/sync")
 	if err != nil {
 		return nil, err
 	}
@@ -163,13 +163,13 @@ func (op SearchOperation) Execute() ([]Package, error) {
 		}
 	}
 
-	results, err := aurweb.Search(string(op.field), op.keyword)
+	search, err := aurweb.Search(string(op.field), op.keyword)
 
 	if err != nil {
 		return nil, err
 	}
 
-	for _, r := range results {
+	for _, r := range search.Results {
 		packages = append(packages, Package{Name: r.Name, Version: r.Version, Description: r.Description, Repository: "aur"})
 	}
 

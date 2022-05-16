@@ -4,6 +4,9 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"io"
+	"compress/gzip"
+	"archive/tar"
 )
 
 // ConsoleCommand executes a command in a specific workDir
@@ -72,3 +75,33 @@ func InstallAurPackage(pkg string, console ConsoleCommandFunc) error {
 
 	return console(cache, "makepkg", "--noconfirm", "-si")
 }
+
+
+func AssertNoError(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+// ForEachFileInTarGz calls fn for each file in targz
+// TODO: move this into utils
+func ForEachFileInTarGz(targz io.Reader, fn func(reader io.Reader) error) error {
+	gzReader, err := gzip.NewReader(targz)
+	if err != nil {
+		return err
+	}
+	tarReader := tar.NewReader(gzReader)
+
+	header, err := tarReader.Next()
+	for err == nil {
+		if header.Typeflag == tar.TypeReg {
+			if err := fn(tarReader); err != nil {
+				return err
+			}
+		}
+		header, err = tarReader.Next()
+	}
+	return nil
+}
+
+

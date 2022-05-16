@@ -1,11 +1,14 @@
 package pacman_test
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 	"testing"
 
 	"gitlab.com/rayone121/rayman/pacman"
+	"gitlab.com/rayone121/rayman/testingdata"
+	"io"
 )
 
 type ErrorReader struct{}
@@ -42,7 +45,7 @@ func TestFromDesc(t *testing.T) {
 }
 
 func TestParseInexistentSystemRepositoryFile(t *testing.T) {
-	_, err := pacman.ParseSystemRepositoryFile("invalid")
+	_, err := pacman.ParseSystemRepositoryFile("invalid", pacman.FromDescReader)
 	if err == nil {
 		t.Fatal("parsed invalid system repository file")
 	}
@@ -51,7 +54,7 @@ func TestParseInexistentSystemRepositoryFile(t *testing.T) {
 func TestParseSystemRepositoryFile(t *testing.T) {
 
 	// TODO: add the file in testdata/ instead of assuming an Arch Linux system
-	packages, err := pacman.ParseSystemRepositoryFile("core")
+	packages, err := pacman.ParseSystemRepositoryFile("core", pacman.FromDescReader)
 	if err != nil {
 		t.Fatal("couldn't parse the repository")
 	}
@@ -66,5 +69,16 @@ func TestParseSystemRepositoryFile(t *testing.T) {
 
 	if !found {
 		t.Fatal("something went wrong... couldn't find 'linux' package...")
+	}
+}
+
+func TestParseRepository_ParserErr(t *testing.T) {
+	var buff bytes.Buffer
+	buff.Write(testingdata.CoreDB)
+
+	expected := errors.New("parser error")
+	_, err := pacman.ParseRepository(&buff, func(r io.Reader) (pacman.Package, error) { return pacman.Package{}, expected })
+	if err != expected {
+		t.Fatalf("expected %#v got %#v", expected, err)
 	}
 }

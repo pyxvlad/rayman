@@ -7,57 +7,51 @@ import (
 	"net/url"
 )
 
-const AUR = "https://aur.archlinux.org/rpc?v=5&"
+const AUR = "https://aur.archlinux.org/rpc"
+const AURv5 = AUR + "?v=5&"
 
-func Search(field, query string) ([]Result, error) {
+func Search(field, query string) (search SearchResponse, err error) {
 	v := url.Values{}
 	v.Set("type", "search")
 	v.Set("by", field)
 	v.Set("arg", query)
 
-	response, err := http.Get(AUR + v.Encode())
+	var response *http.Response
+	response, err = http.Get(AURv5 + v.Encode())
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	decoder := json.NewDecoder(response.Body)
-	search := SearchResponse{}
 	search.Results = make([]Result, 0, 0)
 
 	err = decoder.Decode(&search)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	if search.Type == "error" {
-		return nil, errors.New(search.Error)
+		err = errors.New(search.Error)
+		return
 	}
-	return search.Results, nil
+	return
 }
 
-func Info(arg []string) ([]Result, error) {
+func Info(arg []string) (info InfoResponse,err error) {
 	v := url.Values{}
 	v.Set("type", "info")
 	for _, a := range arg {
 		v.Add("arg[]", a)
 	}
 
-	response, err := http.Get(AUR + v.Encode())
+	response, err := http.Get(AURv5 + v.Encode())
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	decoder := json.NewDecoder(response.Body)
-	search := SearchResponse{}
-	search.Results = make([]Result, 0, 0)
+	info.Results = make([]InfoResult, 0, 0)
 
-	err = decoder.Decode(&search)
-	if err != nil {
-		return nil, err
-	}
-
-	if search.Type == "error" {
-		return nil, errors.New(search.Error)
-	}
-	return search.Results, nil
+	err = decoder.Decode(&info)
+	return
 }
