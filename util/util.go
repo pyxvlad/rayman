@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"os/user"
 )
 
 // NewConsoleCommand uses exec.Command to create a new *exec.Cmd and also sets it to use standard I/O
@@ -47,6 +48,13 @@ func DirExists(path string) (bool, error) {
 }
 
 func InstallAurPackage(pkg string) error {
+	current, err := user.Current()
+	if err != nil {
+		return err
+	}
+	if current.Name == "root" {
+		return errors.New("cannot build AUR packages as ROOT")
+	}
 	cache, err := MakeCacheDir()
 	if err != nil {
 		return err
@@ -85,7 +93,7 @@ func InstallAurPackage(pkg string) error {
 		}
 	}
 
-	cmd := NewConsoleCommand("makepkg", "-si")
+	cmd := NewConsoleCommand("makepkg", "--noconfirm", "-si")
 	cmd.Dir = cache + "/" + pkg
 	if err != nil {
 		return err

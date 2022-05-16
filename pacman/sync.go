@@ -6,7 +6,6 @@ import (
 	"compress/gzip"
 	"io"
 	"os"
-	"path"
 	"strings"
 )
 
@@ -38,7 +37,7 @@ func FromDescReader(r io.Reader) (Package, error) {
 	for _, l := range lines {
 		if strings.HasPrefix(l, "%") {
 			header = l
-			continue;
+			continue
 		}
 
 		switch header {
@@ -54,16 +53,26 @@ func FromDescReader(r io.Reader) (Package, error) {
 	return pkg, nil
 }
 
-func ParseRepository(filepath string) ([]Package, error) {
-
-	repoName := strings.TrimSuffix(path.Base(filepath), ".db")
-
-	repositoryFile, err := os.Open(filepath)
+func ParseRepositoryFile(repoName string) ([]Package, error) {
+	file, err := os.Open("/var/lib/pacman/sync/" + repoName + ".db")
 	if err != nil {
 		return nil, err
 	}
 
-	gzReader, err := gzip.NewReader(repositoryFile)
+	packages, err := ParseRepository(file, repoName)
+	if err != nil {
+		if err := file.Close(); err != nil {
+			panic(err)
+		}
+		return nil, err
+	}
+
+	return packages, file.Close()
+}
+
+func ParseRepository(reader io.Reader, repoName string) ([]Package, error) {
+
+	gzReader, err := gzip.NewReader(reader)
 	if err != nil {
 		return nil, err
 	}
@@ -85,6 +94,5 @@ func ParseRepository(filepath string) ([]Package, error) {
 		}
 		header, err = tarReader.Next()
 	}
-
 	return packages, nil
 }

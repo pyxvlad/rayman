@@ -2,12 +2,24 @@ package main
 
 import (
 	"fmt"
+	"gitlab.com/rayone121/rayman/api"
 	"gitlab.com/rayone121/rayman/pacman"
 	"os"
 )
 
 func main() {
 	if len(os.Args) < 3 {
+		if os.Args[1] == "web" {
+			a, err := api.New()
+			if err != nil {
+				panic(err)
+			}
+			err = a.Listen()
+			if err != nil {
+				panic(err)
+			}
+		}
+
 		fmt.Println("insufficient arguments")
 		return
 	}

@@ -36,7 +36,7 @@ func New() (Pacman, error) {
 func (p *Pacman) GetAvailablePackages() ([]Package, error) {
 	packages := make([]Package, 0, 100000)
 	for _, r := range p.repos {
-		repoPackages, err := ParseRepository("/var/lib/pacman/sync/" + r + ".db")
+		repoPackages, err := ParseRepositoryFile(r)
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +62,7 @@ func (p *Pacman) GetRepositoryPackages(repo string) ([]Package, error) {
 		return nil, fmt.Errorf("repository %s doesn't exist", repo)
 	}
 
-	repoPackages, err := ParseRepository("/var/lib/pacman/sync" + repo + ".db")
+	repoPackages, err := ParseRepositoryFile(repo)
 	if err != nil {
 		return nil, err
 	}

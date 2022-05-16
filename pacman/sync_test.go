@@ -27,10 +27,10 @@ func TestFromDesc(t *testing.T) {
 	}
 }
 
-func TestParseRepository(t *testing.T) {
+func TestParseRepositoryFile(t *testing.T) {
 
 	// TODO: add the file in testdata/ instead of assuming an Arch Linux system
-	packages, err := pacman.ParseRepository("/var/lib/pacman/sync/core.db")
+	packages, err := pacman.ParseRepositoryFile("core")
 	if err != nil {
 		t.Fatal("couldn't parse the repository")
 	}
@@ -45,5 +45,4 @@ func TestParseRepository(t *testing.T) {
 	if !found {
 		t.Fatal("something went wrong... couldn't find 'linux' package...")
 	}
-
 }
