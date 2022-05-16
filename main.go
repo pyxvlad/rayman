@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"gitlab.com/rayone121/rayman/aurweb"
 	"os"
@@ -47,9 +48,10 @@ func InstallAurPackage(pkg string) error {
 	}
 
 	stat, err := os.Stat(cache + "/" + pkg)
-	if err != nil {
+	if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
+	err = nil
 
 	if stat.IsDir() {
 		cmd := exec.Command("git", "pull")
