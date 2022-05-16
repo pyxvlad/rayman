@@ -53,13 +53,24 @@ func FromDescReader(r io.Reader) (Package, error) {
 	return pkg, nil
 }
 
-func ParseRepositoryFile(repoName string) ([]Package, error) {
-	file, err := os.Open("/var/lib/pacman/sync/" + repoName + ".db")
+func ParseSystemRepositoryFile(repoName string) ([]Package, error) {
+	pkg, err := ParseRepositoryFile("/var/lib/pacman/sync/" + repoName + ".db")
+	if err != nil {
+		return nil, err
+	}
+	for i := range pkg {
+		pkg[i].Repository = repoName
+	}
+	return pkg, nil
+}
+
+func ParseRepositoryFile(path string) ([]Package, error) {
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 
-	packages, err := ParseRepository(file, repoName)
+	packages, err := ParseRepository(file)
 	if err != nil {
 		if err := file.Close(); err != nil {
 			panic(err)
@@ -70,7 +81,7 @@ func ParseRepositoryFile(repoName string) ([]Package, error) {
 	return packages, file.Close()
 }
 
-func ParseRepository(reader io.Reader, repoName string) ([]Package, error) {
+func ParseRepository(reader io.Reader) ([]Package, error) {
 
 	gzReader, err := gzip.NewReader(reader)
 	if err != nil {
@@ -88,8 +99,6 @@ func ParseRepository(reader io.Reader, repoName string) ([]Package, error) {
 			if err != nil {
 				return nil, err
 			}
-
-			pkg.Repository = repoName
 			packages = append(packages, pkg)
 		}
 		header, err = tarReader.Next()

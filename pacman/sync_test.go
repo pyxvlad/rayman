@@ -1,11 +1,25 @@
 package pacman_test
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
 	"gitlab.com/rayone121/rayman/pacman"
 )
+
+type ErrorReader struct{}
+
+func (e ErrorReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New("kaboom")
+}
+
+func TestFromDescWithErrorReader(t *testing.T) {
+	_, err := pacman.FromDescReader(ErrorReader{})
+	if err == nil {
+		t.Fatal("parsed pkg from errorneous reader without returning error")
+	}
+}
 
 func TestFromDesc(t *testing.T) {
 	desc :=
@@ -27,10 +41,17 @@ func TestFromDesc(t *testing.T) {
 	}
 }
 
-func TestParseRepositoryFile(t *testing.T) {
+func TestParseInexistentSystemRepositoryFile(t *testing.T) {
+	_, err := pacman.ParseSystemRepositoryFile("invalid")
+	if err == nil {
+		t.Fatal("parsed invalid system repository file")
+	}
+}
+
+func TestParseSystemRepositoryFile(t *testing.T) {
 
 	// TODO: add the file in testdata/ instead of assuming an Arch Linux system
-	packages, err := pacman.ParseRepositoryFile("core")
+	packages, err := pacman.ParseSystemRepositoryFile("core")
 	if err != nil {
 		t.Fatal("couldn't parse the repository")
 	}
@@ -39,6 +60,7 @@ func TestParseRepositoryFile(t *testing.T) {
 	for _, p := range packages {
 		if p.Name == "linux" && p.Repository == "core" {
 			found = true
+			break
 		}
 	}
 

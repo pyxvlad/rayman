@@ -59,6 +59,15 @@ func (a *API) install(w http.ResponseWriter, r *http.Request) {
 	a.schedule(w, pacman.NewInstallOperation(packages, false))
 }
 
+func (a *API) list(w http.ResponseWriter, _ *http.Request) {
+	packages, err := pacman.GetInstalledPackages()
+	if err != nil {
+		return
+	}
+
+	writeJson(w, packages)
+}
+
 func (a *API) schedule(w http.ResponseWriter, op pacman.Operation) {
 	id := a.tasker.Schedule(op)
 	_, err := w.Write([]byte(fmt.Sprintf("{\"ID\":%d}", id)))
@@ -101,6 +110,7 @@ func (a *API) Listen() error {
 	v1.HandleFunc("/search", a.search)
 	v1.HandleFunc("/current", a.currentOperation)
 	v1.HandleFunc("/completed", a.completed)
+	v1.HandleFunc("/list", a.list)
 
 	err := http.ListenAndServe(":8042", a)
 	if err != nil {

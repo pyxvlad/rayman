@@ -36,7 +36,7 @@ func New() (Pacman, error) {
 func (p *Pacman) GetAvailablePackages() ([]Package, error) {
 	packages := make([]Package, 0, 100000)
 	for _, r := range p.repos {
-		repoPackages, err := ParseRepositoryFile(r)
+		repoPackages, err := ParseRepositoryFile("/var/lib/pacman/sync/" + r + ".db")
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +62,9 @@ func (p *Pacman) GetRepositoryPackages(repo string) ([]Package, error) {
 		return nil, fmt.Errorf("repository %s doesn't exist", repo)
 	}
 
-	repoPackages, err := ParseRepositoryFile(repo)
+	print("/var/lib/pacman/sync/" + repo + ".db")
+
+	repoPackages, err := ParseRepositoryFile("/var/lib/pacman/sync/" + repo + ".db")
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +106,7 @@ func Install(pkgs []string, confirm bool) error {
 	for _, pkg := range pkgs {
 		args = append(args, pkg)
 	}
-	cmd := util.NewConsoleCommand("sudo", args...)
-	return cmd.Run()
+	return util.ConsoleCommand(".", "sudo", args...)
 }
 
 func Remove(pkgs []string, confirm bool) error {
@@ -117,8 +118,7 @@ func Remove(pkgs []string, confirm bool) error {
 	for _, pkg := range pkgs {
 		args = append(args, pkg)
 	}
-	cmd := util.NewConsoleCommand("sudo", args...)
-	return cmd.Run()
+	return util.ConsoleCommand(".", "sudo", args...)
 }
 
 func IsPackageInstalled(pkg string) (bool, error) {

@@ -72,7 +72,7 @@ func (op InstallOperation) Execute() ([]Package, error) {
 		}
 
 		for _, r := range results {
-			err := util.InstallAurPackage(r.Name)
+			err := util.InstallAurPackage(r.Name, util.ConsoleCommand)
 			if err != nil {
 				return nil, err
 			}
