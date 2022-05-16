@@ -25,6 +25,74 @@ func IsPackageInstalled(pkg string) (bool, error) {
 	return false, nil
 }
 
+func MakeCacheDir() (string, error) {
+	xdgCache := os.Getenv("XDG_CACHE_HOME")
+	if xdgCache == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			panic(err)
+		}
+		xdgCache = home + "/.cache"
+	}
+
+	cache := xdgCache + "/rayman"
+
+	return cache, os.MkdirAll(cache, 0777)
+}
+
+func InstallAurPackage(pkg string) error {
+	cache, err := MakeCacheDir()
+	if err != nil {
+		return err
+	}
+
+	stat, err := os.Stat(cache + "/" + pkg)
+	if err != nil {
+		return err
+	}
+
+	if stat.IsDir() {
+		cmd := exec.Command("git", "pull")
+		cmd.Dir = cache + "/" + pkg
+		if err != nil {
+			return err
+		}
+		cmd.Stdout = os.Stdout
+		cmd.Stdin = os.Stdin
+		cmd.Stdin = os.Stderr
+
+		err = cmd.Run()
+		if err != nil {
+			return err
+		}
+	} else {
+		cmd := exec.Command("git", "clone", "https://aur.archlinux.org/"+pkg+".git")
+		cmd.Dir = cache
+		if err != nil {
+			return err
+		}
+		cmd.Stdout = os.Stdout
+		cmd.Stdin = os.Stdin
+		cmd.Stdin = os.Stderr
+
+		err = cmd.Run()
+		if err != nil {
+			return err
+		}
+	}
+
+	cmd := exec.Command("makepkg", "-si")
+	cmd.Dir = cache + "/" + pkg
+	if err != nil {
+		return err
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+
+	return cmd.Run()
+}
+
 func main() {
 	if len(os.Args) < 3 {
 		fmt.Println("insufficient arguments")
@@ -35,6 +103,46 @@ func main() {
 	switch os.Args[1] {
 	case "install":
 		{
+			installed, err := IsPackageInstalled(pkg)
+			if err != nil {
+				return
+			}
+			if installed {
+				fmt.Printf("It looks like package %s is already installed... Do you want to continue? [Y/n]", pkg)
+				var answer rune
+				_, err := fmt.Scan(&answer)
+				if err != nil {
+					panic(err)
+				}
+				if answer == 'n' || answer == 'N' {
+					fmt.Println("Ok... aborting...")
+					os.Exit(1)
+				}
+			}
+
+			cmd := exec.Command("sudo", "pacman", "--sync", "--noconfirm", pkg)
+
+			cmd.Stdout = os.Stdout
+			cmd.Stdin = os.Stdin
+			cmd.Stderr = os.Stderr
+
+			err = cmd.Run()
+			if err != nil {
+				fmt.Println("Pacman failed to install package, trying to find the package in the AUR")
+				info, err := aurweb.Info([]string{pkg})
+				if err != nil {
+					panic(err)
+				}
+				if len(info) == 0 {
+					fmt.Println("No AUR package found... Aborting...")
+					os.Exit(1)
+				}
+
+				err = InstallAurPackage(pkg)
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
 
 		}
 	case "remove":
@@ -50,7 +158,7 @@ func main() {
 			cmd := exec.Command("sudo", "pacman", "-R", pkg)
 			cmd.Stdout = os.Stdout
 			cmd.Stdin = os.Stdin
-			cmd.Stderr = os.Stdin
+			cmd.Stderr = os.Stderr
 			err = cmd.Run()
 			if err != nil {
 				panic(err)
@@ -65,7 +173,7 @@ func main() {
 
 			err := cmd.Run()
 			if err != nil {
-				panic(err)
+				fmt.Printf("pacman: %s", err)
 			}
 
 			results, err := aurweb.Search("name", pkg)
@@ -86,6 +194,7 @@ func main() {
 				fmt.Print("\n\t", r.Description)
 
 			}
+			fmt.Print('\n')
 
 		}
 	}
